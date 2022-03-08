@@ -137,3 +137,71 @@ make verify
 Note that creating a server from a new image may take long time. It typically takes about 10 minutes. From the second time, creating a server from the image takes one minute.
 
 You can check the name and ID of the new image at [https://cloud.ibm.com/vpc-ext/compute/images](https://cloud.ibm.com/vpc-ext/compute/images).
+
+
+## Install custom Kata shim
+
+At the worker node, you need to build and install the custom Kata shim binary as follows.
+
+```
+cd kata-containers/src/runtime
+make $PWD/containerd-shim-kata-v2
+install containerd-shim-kata-v2 /usr/local/bin/
+```
+
+You also need to prepare a Kata shim configuration file at `/etc/kata-containers/configuration.toml`. A minimum kata shim configuration looks like this.
+
+```
+[runtime]
+internetworking_model = "none"
+disable_new_netns = true
+enable_pprof = true
+enable_debug = true
+[hypervisor.remote]
+remove_hypervisor = "/run/peerpod/hypervisor.sock"
+[agent.kata]
+```
+
+## Launch Cloud API adaptor
+
+To build the cloud-api-adaptor, you need both cloud-api-adaptor and kata-containers repositories at the same directory, since `go.mod` in `cloud-api-adaptor` refers the `src/runtime` directory in the kata shim source using a reference `../kata-containers/src/runtime`.
+
+In the cloud-api-adaptor directory, you can start Cloud API adaptor as follows.
+
+```
+api_key=<your API key>
+ssh_key_id=<your SSH key ID>
+image_id=<your custom VM image ID>
+profile=bx2-2x8
+
+vpc_id=$VPC_ID
+primary_subnet_id=$PRIMARY_SUBNET_ID
+secondary_subnet_id=$SECONDARY_SUBNET_ID
+primary_security_groupd_id=$PRIMARY_SECURITY_GROUPD_ID
+secondary_security_group_id=$SECONDARY_SECURITY_GROUPD_ID
+
+go run cmd/cloud-api-adaptor/main.go \
+    -api-key "$api_key" \
+    -key-id "$ssh_key_id" \
+    -image-id "$image_id" \
+    -profile-name "$profile" \
+    -zone-name jp-tok-2 \
+    -primary-subnet-id "$primary_subnet_id" \
+    -primary-security-group-id "$primary_security_groupd_id" \
+    -secondary-subnet-id "$secondary_subnet_id" \
+    -secondary-security-group-id "$secondary_security_group_id" \
+    -vpc-id "$vpc_id" \
+    -pods-dir /run/peerpod/pods \
+    -socket /run/peerpod/hypervisor.sock \
+    -tunnel-type routing \
+    -host-interface ens4
+```
+
+## Demo
+
+You can create a demo pod as follows. This YAML file will create an nginx pod using a peer pod VM.
+
+```
+cd ibmcloud/demo
+kubectl apply -f runtime-class.yaml nginx.yaml
+```
