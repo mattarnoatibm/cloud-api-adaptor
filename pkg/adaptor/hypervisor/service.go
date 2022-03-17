@@ -201,13 +201,15 @@ func (s *hypervisorService) StartSandbox(ctx context.Context, req *pb.StartSandb
 		},
 		VPC: &vpcv1.VPCIdentity{ID: &s.VpcID},
 		PrimaryNetworkInterface: &vpcv1.NetworkInterfacePrototype{
-			AllowIPSpoofing: func(b bool) *bool { return &b }(true),
-			Subnet:          &vpcv1.SubnetIdentity{ID: &s.PrimarySubnetID},
+			Subnet: &vpcv1.SubnetIdentity{ID: &s.PrimarySubnetID},
 			SecurityGroups: []vpcv1.SecurityGroupIdentityIntf{
 				&vpcv1.SecurityGroupIdentityByID{ID: &s.PrimarySecurityGroupID},
 			},
 		},
-		NetworkInterfaces: []vpcv1.NetworkInterfacePrototype{
+	}
+
+	if s.SecondarySubnetID != "" {
+		prototype.NetworkInterfaces = []vpcv1.NetworkInterfacePrototype{
 			{
 				AllowIPSpoofing: func(b bool) *bool { return &b }(true),
 				Subnet:          &vpcv1.SubnetIdentity{ID: &s.SecondarySubnetID},
@@ -215,7 +217,7 @@ func (s *hypervisorService) StartSandbox(ctx context.Context, req *pb.StartSandb
 					&vpcv1.SecurityGroupIdentityByID{ID: &s.SecondarySecurityGroupID},
 				},
 			},
-		},
+		}
 	}
 
 	result, resp, err := s.vpcV1.CreateInstance(&vpcv1.CreateInstanceOptions{InstancePrototype: prototype})
