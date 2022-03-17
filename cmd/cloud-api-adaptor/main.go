@@ -45,7 +45,7 @@ func (cfg *daemonConfig) Setup() (cmd.Starter, error) {
 		flags.StringVar(&cfg.SecondarySecurityGroupID, "secondary-security-group-id", "", "Secondary security group ID")
 		flags.StringVar(&cfg.KeyID, "key-id", "", "SSH Key ID")
 		flags.StringVar(&cfg.VpcID, "vpc-id", "", "VPC ID")
-		flags.StringVar(&cfg.TunnelType, "tunnel-type", "routing", "tunnel type for pod networking")
+		flags.StringVar(&cfg.TunnelType, "tunnel-type", podnetwork.DefaultTunnelType, "tunnel type for pod networking")
 		flags.StringVar(&cfg.HostInterface, "host-interface", "", "network interface name that is used for network tunnel traffic")
 	})
 

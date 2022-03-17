@@ -12,6 +12,8 @@ import (
 	"github.com/confidential-containers/peer-pod-opensource/pkg/util/netops"
 )
 
+const DefaultTunnelType = "vxlan"
+
 type WorkerNode interface {
 	Inspect(nsPath string) (*tunneler.Config, error)
 	Setup(nsPath string, podNodeIPs []net.IP, config *tunneler.Config) error
