@@ -160,6 +160,60 @@ You need to build a pod VM image for peer pod VMs. A pod VM image contains the f
 
 The build scripts are located in [ibmcloud/image](./image). The prerequisite software to build a pod VM image is already installed in the worker node by [the Ansible playbook](terraform/cluster/ansible/playbook.yml) for convenience.
 
+You need to configure Cloud Object Storage (COS) to upload your custom VM image.
+
+https://cloud.ibm.com/objectstorage/
+
+First, create a COS service instance if you have not create one. Then, create a COS bucket with the COS instance. The COS service instance and bucket names are necessary to upload a custom VM image.
+
+Next, you need to grant access to COS to import images as described at [https://cloud.ibm.com/docs/vpc?topic=vpc-object-storage-prereq&interface=cli](https://cloud.ibm.com/docs/vpc?topic=vpc-object-storage-prereq&interface=cli).
+
+ibmcloud login -r jp-tok -apikey $api_key
+COS_INSTANCE_GUID=$(ibmcloud resource service-instance --output json "$IBMCLOUD_COS_SERVICE_INSTANCE" | jq -r '.[].guid')
+ibmcloud iam authorization-policy-create is cloud-object-storage Reader --source-resource-type image --target-service-instance-id $COS_INSTANCE_GUID
+
+You can use a Terraform template located at [ibmcloud/terraform/podvm-build](./terraform/podvm-build) to use Terraform and Ansible to build a pod VM image, upload it to a COS bucket and verify it.
+
+Create the `terraform.tfvars` in [the template directory](./terraform/podvm-build). `terraform.tfvars` should look like this.
+
+```
+ibmcloud_api_key = "<your API key>"
+ibmcloud_user_id = "<IBM Cloud User ID>"
+cluster_name = "<cluster name>"
+cos_service_instance_name = "<COS Service Instance Name>"
+cos_bucket_name = "<COS Bucket Name>"
+```
+
+If you used the Terraform templates in [common](./terraform/common) and [cluster](./terraform/cluster) to create the VPC and VSIs, you should set `ibmcloud_api_key` and `cluster_name` to the same values as those you entered in `terraform.tfvars` for those templates.
+
+`ibmcloud_user_id` should be set to the IBM Cloud user ID who owns the API key `ibmcloud_api_key`. You can look up the user ID using.
+
+```
+ibmcloud account users
+```
+
+If `ibmcloud account users` displays multiple user IDs, choose the user ID whose state is `ACTIVE`.
+
+The `cos_service_instance_name` and `cos_bucket_name` tfvars are optional and default to values based on your `cluster_name` tfvar if not set, as per the example in the following table.
+
+| Resource | Value |
+|----------|-------|
+| `cluster_name` tfvar | peer-pod-cluster |
+| COS Service Instance name | peer-pod-cluster-cos-service-instance | 
+| COS Bucket name | peer-pod-cluster-cos-bucket |
+
+For uploding the pod VM image using Terraform, the COS Bucket must be a regional bucket in the same region (default `jp-tok`) as the VPC and VSIs.
+
+Execute the following commands to build, upload and verify the pod VM image.
+
+```
+cd ibmcloud/terraform/podvm-build
+terraform init
+terraform plan
+terraform apply
+```
+
+To build, upload and verify the pod VM image without Terraform you need to log into the worker node and run the following commands on it.
 
 Note that building a pod VM image on a worker node is not recommended for production, and we need to build a pod VM image somewhere secure to protect workloads running in a peer pod VM.
 
@@ -178,16 +232,14 @@ CLOUD_PROVIDER=ibmcloud make build
 
 **Note:** if your worker node is **s390x** based, the suffix of this new created QCOW2 file will be `-s390x` otherwise it will be `-amd64`.
 
+The following command builds a custom VM image. A new QCOW2 file with prefix `podvm-` will be created in the current directory.
 
-You need to configure Cloud Object Storage (COS) to upload your custom VM image.
+```
+cd /root/cloud-api-adaptor/ibmcloud/image
+CLOUD_PROVIDER=ibmcloud make build
+```
 
-https://cloud.ibm.com/objectstorage/
-
-
-First, create a COS service instance if you have not create one. Then, create a COS bucket with the COS instance. The COS service instance and bucket names are necessary to upload a custom VM image.
-
-
-The following environment variables are necessary to be set before executing the image upload script. You can change `IBMCLOUD_COS_REGION` if you prefer another region. In this case, you also want to change `IBMCLOUD_COS_SERVICE_ENDPOINT` to one of endpoints listed at [https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints).
+The following environment variables are necessary to be set before executing the image upload script. If you created the COS bucket in a different region to the default `jp-tok` region, you should set IBMCLOUD_COS_REGION to that region. In this case, you also want to change IBMCLOUD_COS_SERVICE_ENDPOINT to one of endpoints listed at [https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints).
 
 ```
 export IBMCLOUD_API_KEY=<your API key>
@@ -197,14 +249,6 @@ export IBMCLOUD_API_ENDPOINT=https://cloud.ibm.com
 export IBMCLOUD_VPC_REGION=jp-tok
 export IBMCLOUD_COS_REGION=jp-tok
 export IBMCLOUD_COS_SERVICE_ENDPOINT=https://s3.jp-tok.cloud-object-storage.appdomain.cloud
-```
-
-Next, you need to grant access to COS to import images as described at [https://cloud.ibm.com/docs/vpc?topic=vpc-object-storage-prereq&interface=cli](https://cloud.ibm.com/docs/vpc?topic=vpc-object-storage-prereq&interface=cli).
-
-```
-ibmcloud login -a $IBMCLOUD_API_ENDPOINT -r $IBMCLOUD_VPC_REGION -apikey $IBMCLOUD_API_KEY
-COS_INSTANCE_GUID=$(ibmcloud resource service-instance --output json "$IBMCLOUD_COS_SERVICE_INSTANCE" | jq -r '.[].guid')
-ibmcloud iam authorization-policy-create is cloud-object-storage Reader --source-resource-type image --target-service-instance-id $COS_INSTANCE_GUID
 ```
 
 Then, you can execute the image upload script by using `make`.
