@@ -204,6 +204,8 @@ The `cos_service_instance_name` and `cos_bucket_name` tfvars are optional and de
 
 For uploding the pod VM image using Terraform, the COS Bucket must be a regional bucket in the same region (default `jp-tok`) as the VPC and VSIs.
 
+**Note:** The `Operator` and `Console Admin` roles must be [assigned](https://cloud.ibm.com/docs/vpc?topic=vpc-vsi_is_connecting_console&interface=ui) to the user. The Terraform template will create the `Console Admin` role for the user `ibmcloud_user_id` is set to in the template `terraform.tfvars`.
+
 Execute the following commands to build, upload and verify the pod VM image.
 
 ```
@@ -258,9 +260,6 @@ CLOUD_PROVIDER=ibmcloud make push
 ```
 
 After successfully uploading an image, you can verify the image by creating a virtual server instance using it.
-
-**Note:** The `Operator` and `Console Admin` roles must be [assigned](https://cloud.ibm.com/docs/vpc?topic=vpc-vsi_is_connecting_console&interface=ui) to the user.
-
 
 The following command will create a new server, and delete it. The VPC and subnet name are available in the terraform configuration mentioned above. You need to change the zone name if you have changed the region.
 
