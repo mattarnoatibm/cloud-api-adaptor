@@ -174,7 +174,9 @@ COS_INSTANCE_GUID=$(ibmcloud resource service-instance --output json "$IBMCLOUD_
 ibmcloud iam authorization-policy-create is cloud-object-storage Reader --source-resource-type image --target-service-instance-id $COS_INSTANCE_GUID
 ```
 
-You can use a Terraform template located at [ibmcloud/terraform/podvm-build](./terraform/podvm-build) to use Terraform and Ansible to build a pod VM image, upload it to a COS bucket and verify it.
+You can use a Terraform template located at [ibmcloud/terraform/podvm-build](./terraform/podvm-build) to use Terraform and Ansible to build a pod VM image on the k8s worker node, upload it to a COS bucket and verify it.
+
+Note that building a pod VM image on a worker node using the Terraform template is not recommended for production, and we need to build a pod VM image somewhere secure to protect workloads running in a peer pod VM.
 
 Create the `terraform.tfvars` in [the template directory](./terraform/podvm-build). `terraform.tfvars` should look like this.
 
@@ -217,63 +219,9 @@ terraform plan
 terraform apply
 ```
 
-To build, upload and verify the pod VM image without Terraform you need to log into the worker node and run the following commands on it.
+**Note:** if your worker node is **s390x** based, the suffix of the created QCOW2 file for the custom image will be `-s390x` otherwise it will be `-amd64`.
 
-Note that building a pod VM image on a worker node is not recommended for production, and we need to build a pod VM image somewhere secure to protect workloads running in a peer pod VM.
-
-- SSH to worker node
-```
-ssh root@floating-ip-of-worker-node
-```
-- Go to image folder
-```
-cd /root/cloud-api-adaptor/ibmcloud/image
-```
-- Build a custom VM image. A new QCOW2 file with prefix `podvm-` will be created in the current directory.
-```
-CLOUD_PROVIDER=ibmcloud make build
-```
-
-**Note:** if your worker node is **s390x** based, the suffix of this new created QCOW2 file will be `-s390x` otherwise it will be `-amd64`.
-
-The following command builds a custom VM image. A new QCOW2 file with prefix `podvm-` will be created in the current directory.
-
-```
-cd /root/cloud-api-adaptor/ibmcloud/image
-CLOUD_PROVIDER=ibmcloud make build
-```
-
-The following environment variables are necessary to be set before executing the image upload script. If you created the COS bucket in a different region to the default `jp-tok` region, you should set IBMCLOUD_COS_REGION to that region. In this case, you also want to change IBMCLOUD_COS_SERVICE_ENDPOINT to one of endpoints listed at [https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints).
-
-```
-export IBMCLOUD_API_KEY=<your API key>
-export IBMCLOUD_COS_SERVICE_INSTANCE=<COS service instance name>
-export IBMCLOUD_COS_BUCKET=<COS bucket name>
-export IBMCLOUD_API_ENDPOINT=https://cloud.ibm.com
-export IBMCLOUD_VPC_REGION=jp-tok
-export IBMCLOUD_COS_REGION=jp-tok
-export IBMCLOUD_COS_SERVICE_ENDPOINT=https://s3.jp-tok.cloud-object-storage.appdomain.cloud
-```
-
-Then, you can execute the image upload script by using `make`.
-
-```
-CLOUD_PROVIDER=ibmcloud make push
-```
-
-After successfully uploading an image, you can verify the image by creating a virtual server instance using it.
-
-The following command will create a new server, and delete it. The VPC and subnet name are available in the terraform configuration mentioned above. You need to change the zone name if you have changed the region.
-
-```
-export IBMCLOUD_VPC_NAME=tok-vpc
-export IBMCLOUD_VPC_SUBNET_NAME=tok-primary-subnet
-export IBMCLOUD_VPC_ZONE=jp-tok-2
-
-CLOUD_PROVIDER=ibmcloud make verify
-```
-
-Note that creating a server from a new image may take long time. It typically takes about 10 minutes. From the second time, creating a server from the image takes one minute.
+**Note:** when verifying the pod VM image, creating a server from a new image may take long time the first time. It typically takes about 10 minutes. From the second time, creating a server from the image takes one minute.
 
 
 You can check the name and ID of the new image at [https://cloud.ibm.com/vpc-ext/compute/images](https://cloud.ibm.com/vpc-ext/compute/images). Alternatively, you can use the `ibmcloud` command to list your images as follows.
