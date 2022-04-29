@@ -174,7 +174,7 @@ COS_INSTANCE_GUID=$(ibmcloud resource service-instance --output json "$IBMCLOUD_
 ibmcloud iam authorization-policy-create is cloud-object-storage Reader --source-resource-type image --target-service-instance-id $COS_INSTANCE_GUID
 ```
 
-You can use a Terraform template located at [ibmcloud/terraform/podvm-build](./terraform/podvm-build) to use Terraform and Ansible to build a pod VM image on the k8s worker node, upload it to a COS bucket and verify it.
+You can use a Terraform template located at [ibmcloud/terraform/podvm-build](./terraform/podvm-build) to use Terraform and Ansible to build a pod VM image on the k8s worker node, upload it to a COS bucket and verify it. The architecture of the pod VM image built on the k8s worker node will be the same as that of the node. For example, a k8s worker node using an Intel x86 VSI will build an Intel x86 pod VM image and a k8s worker node using an IBM s390x VSI will build an IBM s390x pod VM image.
 
 Note that building a pod VM image on a worker node using the Terraform template is not recommended for production, and we need to build a pod VM image somewhere secure to protect workloads running in a peer pod VM.
 
