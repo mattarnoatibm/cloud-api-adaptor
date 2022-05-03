@@ -210,7 +210,7 @@ For uploding the pod VM image using Terraform, the COS Bucket must be a regional
 
 **Note:** The `Operator` and `Console Admin` roles must be [assigned](https://cloud.ibm.com/docs/vpc?topic=vpc-vsi_is_connecting_console&interface=ui) to the user. The Terraform template will create the `Console Admin` role for the user `ibmcloud_user_id` is set to in the template `terraform.tfvars`.
 
-Execute the following commands to build, upload and verify the pod VM image.
+Execute the following commands on your client machine to build, upload and verify the pod VM image.
 
 ```
 cd ibmcloud/terraform/podvm-build

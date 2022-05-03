@@ -12,6 +12,16 @@ locals {
   cos_service_instance_name = var.cos_service_instance_name != null ? var.cos_service_instance_name : "${var.cluster_name}-cos-service-instance"
   cos_bucket_name = var.cos_bucket_name != null ? var.cos_bucket_name : "${var.cluster_name}-cos-bucket"
   ibmcloud_api_endpoint = var.use_ibmcloud_test ? "https://test.cloud.ibm.com" : "https://cloud.ibm.com"
+  is_policies_and_roles = flatten([
+    for policy in data.ibm_iam_user_policy.user_policies.policies: [
+      for resource in policy.resources: policy.roles
+      if resource.service == "is" && resource.resource_group_id == "" && resource.resource_instance_id == ""
+    ]
+  ])
+  has_console_administrator_role = anytrue([
+    for role in local.is_policies_and_roles: true
+    if role == "Console Administrator"
+  ])
 }
 
 data "ibm_is_instance" "worker" {
@@ -53,7 +63,12 @@ ibmcloud_vpc_zone: ${local.zone_name}
 EOF
 }
 
+data "ibm_iam_user_policy" "user_policies" {
+  ibm_id = var.ibmcloud_user_id
+}
+
 resource "ibm_iam_user_policy" "is_console_administrator_policy" {
+  count = local.has_console_administrator_role ? 0 : 1
   ibm_id = var.ibmcloud_user_id
   roles = ["Console Administrator"]
 
