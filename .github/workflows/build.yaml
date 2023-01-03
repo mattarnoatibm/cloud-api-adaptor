@@ -1,0 +1,54 @@
+# (C) Copyright Red Hat 2022.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Build and run unit tests the project for each cloud provider.
+---
+name: build
+on: [pull_request]
+jobs:
+  build_job:
+    name: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        provider:
+          # Please keep this list in alphabetical order.
+          - aws
+          - azure
+          - ibmcloud
+          - libvirt
+        runner:
+          - ubuntu-latest
+        go_version:
+          - 1.18
+    steps:
+      - name: Checkout the pull request code
+        uses: actions/checkout@v3
+      - name: Setup Golang version ${{ matrix.go_version }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go_version }}
+      - name: Install build dependencies
+        if: ${{ matrix.provider == 'libvirt' }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libvirt-dev
+      - name: Build
+        run: |
+          make CLOUD_PROVIDER=${{ matrix.provider }} build
+      - name: Test
+        run: |
+          go install github.com/jstemmer/go-junit-report@v1.0.0
+          export CI="true"
+          sudo -E env PATH="$PATH" make CLOUD_PROVIDER=${{ matrix.provider }} test | tee tests_report.txt
+          sudo chmod o+rw tests_report.txt
+          cat tests_report.txt | $(go env GOPATH)/bin/go-junit-report -set-exit-code > tests_report_junit.xml
+        shell: bash
+      - name: Upload tests report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: tests_report_junit-${{ matrix.provider }}_${{ matrix.runner }}_${{ matrix.go_version }}
+          path: ${{ github.workspace }}/tests_report_junit.xml
+          retention-days: 1

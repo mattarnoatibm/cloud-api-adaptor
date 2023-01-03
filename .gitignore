@@ -1,0 +1,22 @@
+#Directories
+install/runtime-payload/bin
+pause_bundle
+output
+staticlib
+pause
+umoci
+skopeo
+
+# Binaries
+agent-protocol-forwarder
+cloud-api-adaptor
+kata-agent
+
+# IDEs
+.vscode
+
+# Files
+vcenter.auto.pkrvars.hcl
+settings.auto.pkrvars.hcl
+*.qcow2
+
